@@ -733,10 +733,25 @@ def run_animation_logic():
             collision_point_c1_c2_y = -1000
 
 
-        if time_to_c1_c2_collision_sec != float('inf') and time_to_c1_c2_collision_sec > 1e-9: # Evitar colisión en el mismo frame
-            # Hay una colisión C1-C2
-            frames_until_c1_c2_collision = frames_until_n_c1_collision + int(time_to_c1_c2_collision_sec / (FIXED_ANIMATION_INTERVAL_MS / 1000.0))
-            t_col_c1_c2_graph = frames_until_c1_c2_collision * (FIXED_ANIMATION_INTERVAL_MS / 1000.0)
+        # --- Cálculo de frames para la animación de C1 hacia C2 ---
+        # Esta sección determina cuántos frames durará la Fase 2 de la animación.
+        # Debe basarse en la distancia visual y la velocidad de animación de C1.
+
+        v_c1_after_n_anim_magnitud = np.sqrt(v_c1_after_n_anim_x**2 + v_c1_after_n_anim_y**2)
+        num_frames_for_c1_to_reach_c2_anim = 0
+
+        if time_to_c1_c2_collision_sec != float('inf') and time_to_c1_c2_collision_sec > 1e-9: # Si hay una colisión física C1-C2 posible
+            if v_c1_after_n_anim_magnitud > 1e-9: # Si C1 tiene velocidad de animación
+                # DIST_C1_TO_C2_TARGET es la distancia visual que C1 debe recorrer hasta C2.
+                num_frames_for_c1_to_reach_c2_anim = int(DIST_C1_TO_C2_TARGET / v_c1_after_n_anim_magnitud)
+                if num_frames_for_c1_to_reach_c2_anim == 0 and v_c1_after_n_magnitud > 1e-9 : # Si C1 real se mueve, dar al menos 1 frame anim
+                    num_frames_for_c1_to_reach_c2_anim = 1
+            elif v_c1_after_n_magnitud > 1e-9: # C1 tiene velocidad real pero no de animación (ANIMATION_SPEED_FACTOR muy bajo?)
+                 num_frames_for_c1_to_reach_c2_anim = 1 # Darle al menos 1 frame para que no se salte la fase si hay colisión real
+
+            frames_until_c1_c2_collision = frames_until_n_c1_collision + num_frames_for_c1_to_reach_c2_anim
+            # t_col_c1_c2_graph debe reflejar el tiempo físico real de la colisión C1-C2
+            t_col_c1_c2_graph = theoretical_time_to_n_c1_collision + time_to_c1_c2_collision_sec
 
             # Calcular velocidades post C1-C2 colisión
             # C1 tiene velocidad (v_c1_after_n_x_real, v_c1_after_n_y_real)
