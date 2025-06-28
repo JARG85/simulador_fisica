@@ -313,52 +313,55 @@ def animate(frame):
     if global_text_timer is not None:
         global_text_timer.set_text(f'Tiempo Sim.: {time_in_s:.2f} s') # Renombrado para claridad
 
-    # LÓGICA DE DETENCIÓN AJUSTADA para 2D (considerar límites en X e Y)
-    # LÓGICA DE DETENCIÓN: Prioriza la salida de C2.
-    stop_animation = False
-    
+    # --- Lógica de Detención ---
+    # La animación se detiene si todas las partículas están fuera de la pantalla
+    # O si todas las partículas que están en pantalla ya no se mueven significativamente.
+
+    n_is_off_screen = not (x_lim_left + margin_for_particle_size < current_pos_n_x < x_lim_right - margin_for_particle_size and \
+                           y_lim_bottom + margin_for_particle_size < current_pos_n_y < y_lim_top - margin_for_particle_size)
+    c1_is_off_screen = not (x_lim_left + margin_for_particle_size < current_pos_c1_x < x_lim_right - margin_for_particle_size and \
+                            y_lim_bottom + margin_for_particle_size < current_pos_c1_y < y_lim_top - margin_for_particle_size)
     c2_is_off_screen = not (x_lim_left + margin_for_particle_size < current_pos_c2_x < x_lim_right - margin_for_particle_size and \
                             y_lim_bottom + margin_for_particle_size < current_pos_c2_y < y_lim_top - margin_for_particle_size)
 
-    if c2_is_off_screen:
-        text_state.set_text('¡Animación Terminada! Carbono 2 fuera de pantalla.')
+    # Determinar si las partículas en pantalla todavía se están moviendo o se espera que se muevan
+    n_is_active = False # Renombrado de n_is_moving para incluir expectativa
+    if not n_is_off_screen:
+        if frame < frames_until_n_c1_collision and np.sqrt(v_n1x_real**2 + v_n1y_real**2) >= 1e-9: # Antes de N-C1, moviéndose hacia C1
+            n_is_active = True
+        elif frame >= frames_until_n_c1_collision and np.sqrt(v_n2x_real**2 + v_n2y_real**2) >= 1e-9: # Después de N-C1, con velocidad post-colisión
+            n_is_active = True
+
+    c1_is_active = False # Renombrado de c1_is_moving
+    if not c1_is_off_screen:
+        if frame < frames_until_n_c1_collision: # Antes de N-C1, C1 está en reposo pero es un objetivo
+            if np.sqrt(v_n1x_real**2 + v_n1y_real**2) >= 1e-9: # Si el neutrón se mueve hacia él
+                 c1_is_active = True # Considerado activo porque es un objetivo
+        elif frame >= frames_until_c1_c2_collision and np.sqrt(v_c1_after_c2_x_real**2 + v_c1_after_c2_y_real**2) >= 1e-9: # Después de C1-C2
+            c1_is_active = True
+        elif frame >= frames_until_n_c1_collision and frame < frames_until_c1_c2_collision and \
+             np.sqrt(v_c1_after_n_x_real**2 + v_c1_after_n_y_real**2) >= 1e-9: # Entre N-C1 y C1-C2
+            c1_is_active = True
+
+    c2_is_active = False # Renombrado de c2_is_moving
+    if not c2_is_off_screen:
+        if frame < frames_until_c1_c2_collision and frames_until_c1_c2_collision < total_frames: # Antes de C1-C2, C2 es un objetivo
+            # C2 está activo si C1 se mueve hacia él
+            if np.sqrt(v_c1_after_n_x_real**2 + v_c1_after_n_y_real**2) >= 1e-9:
+                c2_is_active = True
+        elif frame >= frames_until_c1_c2_collision and np.sqrt(v_c2_after_c1_x_real**2 + v_c2_after_c1_y_real**2) >= 1e-9: # Después de C1-C2
+            c2_is_active = True
+
+    stop_animation = False
+    if (n_is_off_screen or not n_is_active) and \
+       (c1_is_off_screen or not c1_is_active) and \
+       (c2_is_off_screen or not c2_is_active):
         stop_animation = True
-    else:
-        # C2 is still on screen.
-        # Determine if C2 is expected to move meaningfully in the future.
-        c2_expected_to_move = False
-        if frame < frames_until_c1_c2_collision: # C1-C2 collision hasn't happened yet
-            if frames_until_c1_c2_collision < total_frames: # And it's expected to happen
-                 c2_expected_to_move = True # because C1 is heading towards it
-        elif np.sqrt(v_c2_after_c1_x_real**2 + v_c2_after_c1_y_real**2) >= 1e-9: # Collision happened, and C2 got some speed
-            c2_expected_to_move = True
-
-        if not c2_expected_to_move:
-            # If C2 is not going to move (or has finished its significant movement),
-            # then Neutron or C1 leaving the screen can stop the animation.
-            n_is_off_screen = not (x_lim_left + margin_for_particle_size < current_pos_n_x < x_lim_right - margin_for_particle_size and \
-                                   y_lim_bottom + margin_for_particle_size < current_pos_n_y < y_lim_top - margin_for_particle_size)
-            c1_is_off_screen = not (x_lim_left + margin_for_particle_size < current_pos_c1_x < x_lim_right - margin_for_particle_size and \
-                                    y_lim_bottom + margin_for_particle_size < current_pos_c1_y < y_lim_top - margin_for_particle_size)
-
-            if n_is_off_screen and c1_is_off_screen:
-                 text_state.set_text('¡Animación Terminada! N y C1 fuera (C2 no se mueve).')
-                 stop_animation = True
-            elif n_is_off_screen:
-                # Check if C1 is also effectively static or already off screen
-                c1_static_or_off = c1_is_off_screen or \
-                                   (frame >= frames_until_n_c1_collision and np.sqrt(v_c1_after_n_x_real**2 + v_c1_after_n_y_real**2) < 1e-9 and \
-                                    (frame >= frames_until_c1_c2_collision or np.sqrt(v_c1_after_c2_x_real**2 + v_c1_after_c2_y_real**2) < 1e-9) )
-                if c1_static_or_off:
-                    text_state.set_text('¡Animación Terminada! Neutrón fuera (C1 y C2 no se mueven).')
-                    stop_animation = True
-            elif c1_is_off_screen:
-                 # Check if N is also effectively static or already off screen
-                n_static_or_off = n_is_off_screen or \
-                                  (frame >= frames_until_n_c1_collision and np.sqrt(v_n2x_real**2 + v_n2y_real**2) < 1e-9)
-                if n_static_or_off:
-                    text_state.set_text('¡Animación Terminada! C1 fuera (N y C2 no se mueven).')
-                    stop_animation = True
+        # Determinar el mensaje de finalización más apropiado
+        if n_is_off_screen and c1_is_off_screen and c2_is_off_screen:
+            text_state.set_text('¡Animación Terminada! Todas las partículas fuera de pantalla.')
+        else:
+            text_state.set_text('¡Animación Terminada! Partículas estáticas o fuera de pantalla.')
 
     if stop_animation:
         if current_animation is not None and current_animation.event_source is not None:
