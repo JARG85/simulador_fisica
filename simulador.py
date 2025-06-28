@@ -254,7 +254,7 @@ def animate(frame):
         # C1 se mueve con su velocidad post N-C1 (antes de golpear C2)
         current_pos_c1_x = pos_c1_initial_x + v_c1_after_n_anim_x * frame_since_n_c1_collision
         current_pos_c1_y = pos_c1_initial_y + v_c1_after_n_anim_y * frame_since_n_c1_collision
-        
+
         # C2 permanece en reposo hasta que C1 lo golpea
         current_pos_c2_x = pos_c2_initial_x
         current_pos_c2_y = pos_c2_initial_y
@@ -314,32 +314,63 @@ def animate(frame):
         global_text_timer.set_text(f'Tiempo Sim.: {time_in_s:.2f} s') # Renombrado para claridad
 
     # LÓGICA DE DETENCIÓN AJUSTADA para 2D (considerar límites en X e Y)
-    # Detener si alguna partícula sale de los límites del área visible
+    # LÓGICA DE DETENCIÓN: Prioriza la salida de C2.
     stop_animation = False
-    particle_statuses = {
-        "Neutrón": (current_pos_n_x, current_pos_n_y),
-        "Carbono 1": (current_pos_c1_x, current_pos_c1_y),
-        "Carbono 2": (current_pos_c2_x, current_pos_c2_y)
-    }
-
-    for name, (px, py) in particle_statuses.items():
-        if not (x_lim_left + margin_for_particle_size < px < x_lim_right - margin_for_particle_size and \
-                y_lim_bottom + margin_for_particle_size < py < y_lim_top - margin_for_particle_size):
-            if not stop_animation: # Solo mostrar el primer culpable
-                text_state.set_text(f'¡Animación Terminada! {name} fuera de pantalla.')
-            stop_animation = True
-            break
     
+    c2_is_off_screen = not (x_lim_left + margin_for_particle_size < current_pos_c2_x < x_lim_right - margin_for_particle_size and \
+                            y_lim_bottom + margin_for_particle_size < current_pos_c2_y < y_lim_top - margin_for_particle_size)
+
+    if c2_is_off_screen:
+        text_state.set_text('¡Animación Terminada! Carbono 2 fuera de pantalla.')
+        stop_animation = True
+    else:
+        # C2 is still on screen.
+        # Determine if C2 is expected to move meaningfully in the future.
+        c2_expected_to_move = False
+        if frame < frames_until_c1_c2_collision: # C1-C2 collision hasn't happened yet
+            if frames_until_c1_c2_collision < total_frames: # And it's expected to happen
+                 c2_expected_to_move = True # because C1 is heading towards it
+        elif np.sqrt(v_c2_after_c1_x_real**2 + v_c2_after_c1_y_real**2) >= 1e-9: # Collision happened, and C2 got some speed
+            c2_expected_to_move = True
+
+        if not c2_expected_to_move:
+            # If C2 is not going to move (or has finished its significant movement),
+            # then Neutron or C1 leaving the screen can stop the animation.
+            n_is_off_screen = not (x_lim_left + margin_for_particle_size < current_pos_n_x < x_lim_right - margin_for_particle_size and \
+                                   y_lim_bottom + margin_for_particle_size < current_pos_n_y < y_lim_top - margin_for_particle_size)
+            c1_is_off_screen = not (x_lim_left + margin_for_particle_size < current_pos_c1_x < x_lim_right - margin_for_particle_size and \
+                                    y_lim_bottom + margin_for_particle_size < current_pos_c1_y < y_lim_top - margin_for_particle_size)
+
+            if n_is_off_screen and c1_is_off_screen:
+                 text_state.set_text('¡Animación Terminada! N y C1 fuera (C2 no se mueve).')
+                 stop_animation = True
+            elif n_is_off_screen:
+                # Check if C1 is also effectively static or already off screen
+                c1_static_or_off = c1_is_off_screen or \
+                                   (frame >= frames_until_n_c1_collision and np.sqrt(v_c1_after_n_x_real**2 + v_c1_after_n_y_real**2) < 1e-9 and \
+                                    (frame >= frames_until_c1_c2_collision or np.sqrt(v_c1_after_c2_x_real**2 + v_c1_after_c2_y_real**2) < 1e-9) )
+                if c1_static_or_off:
+                    text_state.set_text('¡Animación Terminada! Neutrón fuera (C1 y C2 no se mueven).')
+                    stop_animation = True
+            elif c1_is_off_screen:
+                 # Check if N is also effectively static or already off screen
+                n_static_or_off = n_is_off_screen or \
+                                  (frame >= frames_until_n_c1_collision and np.sqrt(v_n2x_real**2 + v_n2y_real**2) < 1e-9)
+                if n_static_or_off:
+                    text_state.set_text('¡Animación Terminada! C1 fuera (N y C2 no se mueven).')
+                    stop_animation = True
+
     if stop_animation:
         if current_animation is not None and current_animation.event_source is not None:
             current_animation.event_source.stop()
             if global_text_timer: global_text_timer.set_text(f'Tiempo Sim.: {time_in_s:.2f} s (Final)')
-            # Aquí podríamos querer mostrar el tiempo teórico final para C1 y C2 si es relevante
-            if global_text_theoretical_timer:
-                 if total_theoretical_time_c1 == float('inf'): # Asumiendo que total_theoretical_time fue renombrado a total_theoretical_time_c1
-                    global_text_theoretical_timer.set_text('Tiempo Teórico (C1): ∞ s')
-                 else:
-                    global_text_theoretical_timer.set_text(f'Tiempo Teórico (C1): {total_theoretical_time_c1:.2e} s')
+            if global_text_theoretical_timer: # Display the relevant theoretical time
+                if total_theoretical_time_c2 != float('inf') and frames_until_c1_c2_collision < total_frames : # If C2 path was calculated
+                    global_text_theoretical_timer.set_text(f'Tiempo Teórico (C2 salida): {total_theoretical_time_c2:.2e} s')
+                elif total_theoretical_time_c1 != float('inf'):
+                    global_text_theoretical_timer.set_text(f'Tiempo Teórico (C1 salida): {total_theoretical_time_c1:.2e} s')
+                else:
+                    global_text_theoretical_timer.set_text('Tiempo Teórico: ∞ s')
             fig.canvas.draw_idle()
 
     return neutron, carbon1, carbon2, text_state, global_text_neutron_vel, global_text_carbon_vel, global_text_carbon2_vel, global_text_timer, global_text_theoretical_timer
