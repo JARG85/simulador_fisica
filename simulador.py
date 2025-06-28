@@ -263,7 +263,7 @@ def run_animation_logic():
 
         frames_until_collision = max(1, frames_until_collision) 
         
-        total_frames = 20000
+        total_frames = 500
 
         t_col_graph = frames_until_collision * (FIXED_ANIMATION_INTERVAL_MS / 1000.0)
 
