@@ -27,7 +27,7 @@ def calcular_colision_n_c1(m_n, m_c1, v_n1x_real, v_n1y_real, pos_n_inicial_x, p
     """
     # Vector desde la posición inicial del neutrón hasta el punto de colisión (C1)
     dx_approach_n_c1 = pos_c1_inicial_x - pos_n_inicial_x
-    dy_approach_n_c1 = pos_c1_initial_y - pos_n_inicial_y
+    dy_approach_n_c1 = pos_c1_inicial_y - pos_n_inicial_y
 
     v_n1_magnitud_real = np.sqrt(v_n1x_real**2 + v_n1y_real**2)
 

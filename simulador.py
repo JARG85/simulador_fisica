@@ -7,7 +7,7 @@ import matplotlib
 import fisica_simulacion as fs
 import animacion_simulacion as anim_sim
 
-matplotlib.use('TkAgg') # Asegura que la ventana de la animación se muestre
+# matplotlib.use('TkAgg') # Asegura que la ventana de la animación se muestre
 
 # --- Configuración Inicial de la Simulación y UI ---
 
