@@ -249,8 +249,28 @@ def run_simulation_logic():
 
     # --- 4. Cálculos de Parámetros Específicos de Animación ---
     # Convertir velocidades reales a velocidades de animación
-    simulation_state['v_n1_anim_x'] = v_n1x * ANIMATION_SPEED_FACTOR
-    simulation_state['v_n1_anim_y'] = v_n1y * ANIMATION_SPEED_FACTOR
+
+    # Vector from Neutron's start to C1's start for initial animation phase
+    dx_n_to_c1_visual = simulation_state['pos_c1_initial_x'] - simulation_state['pos_n_initial_x']
+    dy_n_to_c1_visual = simulation_state['pos_c1_initial_y'] - simulation_state['pos_n_initial_y']
+    dist_n_to_c1_visual_mag = np.sqrt(dx_n_to_c1_visual**2 + dy_n_to_c1_visual**2)
+
+    # Magnitude of the neutron's initial animation velocity (consistent with overall animation speed scaling)
+    # v_n1x and v_n1y here refer to the real physics velocities calculated earlier
+    v_n1_overall_anim_magnitude = simulation_state['v_n1_magnitud_real'] * ANIMATION_SPEED_FACTOR
+
+    if dist_n_to_c1_visual_mag > 1e-9: # Avoid division by zero
+        # Direction for animation is directly towards C1
+        dir_n_to_c1_x = dx_n_to_c1_visual / dist_n_to_c1_visual_mag
+        dir_n_to_c1_y = dy_n_to_c1_visual / dist_n_to_c1_visual_mag
+        simulation_state['v_n1_anim_x'] = dir_n_to_c1_x * v_n1_overall_anim_magnitude
+        simulation_state['v_n1_anim_y'] = dir_n_to_c1_y * v_n1_overall_anim_magnitude
+    else: # Neutron and C1 start at the same position
+        simulation_state['v_n1_anim_x'] = 0.0
+        simulation_state['v_n1_anim_y'] = 0.0
+
+    # Subsequent animation velocities are based on post-collision real velocities
+    # v_n2x, v_n2y, v_c1_an_x, v_c1_an_y are results from fs.calcular_colision_n_c1
     simulation_state['v_n2_anim_x'] = v_n2x * ANIMATION_SPEED_FACTOR
     simulation_state['v_n2_anim_y'] = v_n2y * ANIMATION_SPEED_FACTOR
     simulation_state['v_c1_after_n_anim_x'] = v_c1_an_x * ANIMATION_SPEED_FACTOR
