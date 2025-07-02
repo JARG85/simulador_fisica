@@ -12,8 +12,11 @@ ax_anim = None
 neutron_line, carbon1_line, carbon2_line = None, None, None
 text_state_anim = None
 global_text_neutron_vel_anim, global_text_carbon_vel_anim, global_text_carbon2_vel_anim = None, None, None
-global_text_timer_anim, global_text_theoretical_timer_anim = None, None
+global_text_timer_anim, global_text_theoretical_timer_anim, global_text_cm_anim = None, None, None
 current_animation_obj = None # Para almacenar el objeto FuncAnimation
+
+# Masas de las partículas (pasadas por el orquestador)
+m_n_anim, m_c1_anim, m_c2_anim = 1.0, 12.0, 12.0
 
 # Estado de la simulación para la animación (se asignarán desde el orquestador)
 # Posiciones iniciales
@@ -69,7 +72,8 @@ def set_animation_parameters(params):
     """
     global fig_anim, ax_anim, neutron_line, carbon1_line, carbon2_line
     global text_state_anim, global_text_neutron_vel_anim, global_text_carbon_vel_anim
-    global global_text_carbon2_vel_anim, global_text_timer_anim, global_text_theoretical_timer_anim
+    global global_text_carbon2_vel_anim, global_text_timer_anim, global_text_theoretical_timer_anim, global_text_cm_anim
+    global m_n_anim, m_c1_anim, m_c2_anim
 
     global pos_n_initial_x, pos_n_initial_y, pos_c1_initial_x, pos_c1_initial_y, pos_c2_initial_x, pos_c2_initial_y
     global collision_point_n_c1_x, collision_point_n_c1_y, collision_point_c1_c2_x, collision_point_c1_c2_y
@@ -98,6 +102,12 @@ def set_animation_parameters(params):
     global_text_carbon2_vel_anim = params['text_carbon2_vel']
     global_text_timer_anim = params['text_timer']
     global_text_theoretical_timer_anim = params['text_theoretical_timer']
+    global_text_cm_anim = params['text_center_of_mass'] # Store CM text object reference
+
+    # Asignar masas
+    m_n_anim = params['m_n']
+    m_c1_anim = params['m_c1']
+    m_c2_anim = params['m_c2']
 
     # Asignar estado y parámetros de simulación
     pos_n_initial_x = params['pos_n_initial_x']
@@ -170,6 +180,7 @@ def init_animation():
     if global_text_carbon2_vel_anim: global_text_carbon2_vel_anim.set_text('')
     if global_text_timer_anim: global_text_timer_anim.set_text('Tiempo Sim.: 0.00 s')
     if global_text_theoretical_timer_anim: global_text_theoretical_timer_anim.set_text('Tiempo Teórico: Calculando...')
+    if global_text_cm_anim: global_text_cm_anim.set_text('CM: (---, ---)') # Initialize CM text
 
     # Reiniciar la posición de los objetos para la próxima animación (el orquestador debe pasar las pos iniciales correctas)
     neutron_line.set_data([pos_n_initial_x], [pos_n_initial_y])
@@ -178,7 +189,8 @@ def init_animation():
 
     return (neutron_line, carbon1_line, carbon2_line, text_state_anim,
             global_text_neutron_vel_anim, global_text_carbon_vel_anim,
-            global_text_carbon2_vel_anim, global_text_timer_anim, global_text_theoretical_timer_anim)
+            global_text_carbon2_vel_anim, global_text_timer_anim, global_text_theoretical_timer_anim,
+            global_text_cm_anim)
 
 def animate_frame(frame):
     """
@@ -287,6 +299,16 @@ def animate_frame(frame):
 
     if global_text_timer_anim: global_text_timer_anim.set_text(f'Tiempo Sim.: {time_in_s:.2f} s')
 
+    # Calcular y mostrar Centro de Masa
+    total_mass = m_n_anim + m_c1_anim + m_c2_anim
+    if total_mass > 1e-9: # Evitar división por cero si todas las masas son cero (improbable)
+        cm_x = (m_n_anim * current_pos_n_x + m_c1_anim * current_pos_c1_x + m_c2_anim * current_pos_c2_x) / total_mass
+        cm_y = (m_n_anim * current_pos_n_y + m_c1_anim * current_pos_c1_y + m_c2_anim * current_pos_c2_y) / total_mass
+        if global_text_cm_anim: global_text_cm_anim.set_text(f'CM: ({cm_x:.3f}, {cm_y:.3f})')
+    else:
+        if global_text_cm_anim: global_text_cm_anim.set_text('CM: (Masas Cero)')
+
+
     # --- Lógica de Detención (copiada y adaptada del original, ahora en este módulo) ---
     n_is_off_screen = not (x_lim_left_anim + margin_for_particle_size_anim < current_pos_n_x < x_lim_right_anim - margin_for_particle_size_anim and \
                            y_lim_bottom_anim + margin_for_particle_size_anim < current_pos_n_y < y_lim_top_anim - margin_for_particle_size_anim)
@@ -345,7 +367,8 @@ def animate_frame(frame):
 
     return (neutron_line, carbon1_line, carbon2_line, text_state_anim,
             global_text_neutron_vel_anim, global_text_carbon_vel_anim,
-            global_text_carbon2_vel_anim, global_text_timer_anim, global_text_theoretical_timer_anim)
+            global_text_carbon2_vel_anim, global_text_timer_anim, global_text_theoretical_timer_anim,
+            global_text_cm_anim)
 
 def start_animation_loop(params):
     """

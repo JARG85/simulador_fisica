@@ -379,6 +379,10 @@ def run_simulation_logic():
         'text_state': text_state_mpl, 'text_neutron_vel': global_text_neutron_vel_mpl,
         'text_carbon_vel': global_text_carbon_vel_mpl, 'text_carbon2_vel': global_text_carbon2_vel_mpl,
         'text_timer': global_text_timer_mpl, 'text_theoretical_timer': global_text_theoretical_timer_mpl,
+        'text_center_of_mass': global_text_center_of_mass_mpl, # Pass the new text object
+        'm_n': simulation_state['m_n'], # Pass mass of neutron
+        'm_c1': simulation_state['m_c1'], # Pass mass of C1
+        'm_c2': simulation_state['m_c2'], # Pass mass of C2
         'FIXED_ANIMATION_INTERVAL_MS': FIXED_ANIMATION_INTERVAL_MS_CONFIG, # Pasar la constante
         'margin_for_particle_size': margin_for_particle_size_config, # Pasar la constante
         'x_lim': x_lim_sim, 'y_lim': y_lim_sim, # Pasar los límites de los ejes
@@ -477,6 +481,7 @@ global_text_carbon_vel_mpl = fig.text(widget_left_col, velocity_text_bottom_pos 
 global_text_carbon2_vel_mpl = fig.text(widget_left_col, velocity_text_bottom_pos - 0.08, 'Carbono 2: ', fontsize=10, ha='left', va='center')
 global_text_timer_mpl = fig.text(widget_left_col, velocity_text_bottom_pos - 0.12, 'Tiempo Sim.: 0.00 s', fontsize=10, ha='left', va='center', weight='bold', color='blue')
 global_text_theoretical_timer_mpl = fig.text(widget_left_col, velocity_text_bottom_pos - 0.16, 'Tiempo Teórico: N/A', fontsize=10, ha='left', va='center', weight='bold', color='green')
+global_text_center_of_mass_mpl = fig.text(widget_left_col, velocity_text_bottom_pos - 0.20, 'CM: (---, ---)', fontsize=10, ha='left', va='center', weight='bold', color='purple')
 
 # Título General de la Figura Principal
 fig.suptitle('Simulación de Choque Elástico Refactorizada: Neutrón -> C1 -> C2', fontsize=14, weight='bold', y=0.97)
